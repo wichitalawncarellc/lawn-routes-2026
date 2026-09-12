@@ -397,6 +397,14 @@ function loadDone() {
 function saveDone() {
   try { localStorage.setItem('routeDone', JSON.stringify(done)); } catch(e) {}
 }
+function loadSavedDay() {
+  try { return localStorage.getItem('routeLastDay'); } catch(e) { return null; }
+}
+function saveCurrentDay() {
+  try {
+    if (currentDay) localStorage.setItem('routeLastDay', currentDay);
+  } catch(e) {}
+}
 function getKey(w, d, i) { return `${w}||${d}||${i}`; }
 
 // ── CSV Parser ────────────────────────────────────────
@@ -473,7 +481,7 @@ async function fetchData(manual = false) {
 
     // Default to most recent week (first in list)
     currentWeekIdx = 0;
-    currentDay = null;
+    currentDay = loadSavedDay();
 
     document.getElementById('mainContent').style.display = 'none';
     document.getElementById('stopList').style.display = 'block';
@@ -516,6 +524,7 @@ function getDoneCount(wIdx, day) {
 function renderAll() {
   const days = getWeekDays(currentWeekIdx);
   if (!currentDay || !days.includes(currentDay)) currentDay = days[0] || null;
+  saveCurrentDay();
   renderHeader();
   renderTabs();
   renderStops();
@@ -618,6 +627,7 @@ function resetDay() {
 
 function selectDay(day) {
   currentDay = day;
+  saveCurrentDay();
   renderTabs();
   renderStops();
   window.scrollTo(0, 0);
@@ -645,7 +655,7 @@ function closeWeekPicker() {
 
 function selectWeek(idx) {
   currentWeekIdx = idx;
-  currentDay = null;
+  currentDay = loadSavedDay();
   closeWeekPicker();
   renderAll();
 }
