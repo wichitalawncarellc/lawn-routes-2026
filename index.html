@@ -322,6 +322,23 @@
   .empty-icon { font-size: 48px; margin-bottom: 12px; }
   .empty-text { font-size: 15px; font-weight: 500; }
 
+  .start-route-btn {
+    display: block;
+    width: 100%;
+    padding: 13px 16px;
+    margin-bottom: 14px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: var(--green);
+    color: white;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    box-shadow: var(--shadow);
+  }
+  .start-route-btn:active { background: var(--green-light); transform: scale(0.99); }
+
   .reset-btn {
     display: block; width: 100%; padding: 12px;
     margin-top: 16px;
@@ -481,7 +498,7 @@ async function fetchData(manual = false) {
 
     // Default to most recent week (first in list)
     currentWeekIdx = 0;
-    currentDay = loadSavedDay();
+    currentDay = getPreferredDay();
 
     document.getElementById('mainContent').style.display = 'none';
     document.getElementById('stopList').style.display = 'block';
@@ -505,6 +522,22 @@ async function fetchData(manual = false) {
 
 // ── Helpers ───────────────────────────────────────────
 function getWeekName() { return weekOrder[currentWeekIdx] || 'Week'; }
+
+function getTodayDay() {
+  const names = ['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'];
+  return names[new Date().getDay()];
+}
+
+function getPreferredDay() {
+  // This Week opens to today's route when today has stops.
+  // Otherwise keep the last selected day, then fall back to the first available day.
+  const days = getWeekDays(currentWeekIdx);
+  const today = getTodayDay();
+  if (currentSource === 'current' && days.includes(today)) return today;
+  const saved = loadSavedDay();
+  if (saved && days.includes(saved)) return saved;
+  return days[0] || null;
+}
 
 function getWeekDays(wIdx) {
   const dayOrder = ['MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY','CLEANUPS'];
@@ -565,7 +598,8 @@ function renderStops() {
   const doneCount = getDoneCount(currentWeekIdx, currentDay);
   const total = stops.length;
 
-  let html = `<div class="stop-counter">
+  let html = `<button class="start-route-btn" onclick="startRoute()">▶ Start Route</button>
+  <div class="stop-counter">`
     <span class="stop-count-label">${total} stop${total !== 1 ? 's' : ''} today</span>
     <span class="progress-text">${doneCount}/${total} done</span>
   </div>`;
@@ -623,6 +657,28 @@ function resetDay() {
   saveDone();
   renderTabs();
   renderStops();
+}
+
+function startRoute() {
+  const stops = currentDay ? getStops(currentWeekIdx, currentDay) : [];
+  if (!stops.length) return;
+
+  // Google Maps directions supports an origin, destination and intermediate waypoints.
+  // Use the listed route order and cap waypoints so the URL remains reliable on mobile.
+  const addresses = stops.map(s => s.address).filter(Boolean);
+  if (!addresses.length) return;
+
+  if (addresses.length === 1) {
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addresses[0] + ', Wichita, KS')}`, '_blank');
+    return;
+  }
+
+  const origin = addresses[0] + ', Wichita, KS';
+  const destination = addresses[addresses.length - 1] + ', Wichita, KS';
+  const waypoints = addresses.slice(1, -1).map(a => a + ', Wichita, KS').join('|');
+  let url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&travelmode=driving`;
+  if (waypoints) url += `&waypoints=${encodeURIComponent(waypoints)}`;
+  window.open(url, '_blank');
 }
 
 function selectDay(day) {
