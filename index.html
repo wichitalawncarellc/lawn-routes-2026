@@ -663,22 +663,12 @@ function startRoute() {
   const stops = currentDay ? getStops(currentWeekIdx, currentDay) : [];
   if (!stops.length) return;
 
-  // Google Maps directions supports an origin, destination and intermediate waypoints.
-  // Use the listed route order and cap waypoints so the URL remains reliable on mobile.
-  const addresses = stops.map(s => s.address).filter(Boolean);
-  if (!addresses.length) return;
-
-  if (addresses.length === 1) {
-    window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addresses[0] + ', Wichita, KS')}`, '_blank');
-    return;
-  }
-
-  const origin = addresses[0] + ', Wichita, KS';
-  const destination = addresses[addresses.length - 1] + ', Wichita, KS';
-  const waypoints = addresses.slice(1, -1).map(a => a + ', Wichita, KS').join('|');
-  let url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&travelmode=driving`;
-  if (waypoints) url += `&waypoints=${encodeURIComponent(waypoints)}`;
-  window.open(url, '_blank');
+  // Open Google Maps to the first listed stop only.
+  // This avoids Google Maps reinterpreting or substituting addresses in a large multi-stop URL.
+  const firstAddress = stops[0].address;
+  if (!firstAddress) return;
+  const destination = firstAddress + ', Wichita, KS';
+  window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=driving`, '_blank');
 }
 
 function selectDay(day) {
