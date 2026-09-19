@@ -599,7 +599,7 @@ function renderStops() {
   const total = stops.length;
 
   let html = `<button class="start-route-btn" onclick="startRoute()">▶ Start Route</button>
-  <div class="stop-counter">`
+  <div class="stop-counter">
     <span class="stop-count-label">${total} stop${total !== 1 ? 's' : ''} today</span>
     <span class="progress-text">${doneCount}/${total} done</span>
   </div>`;
