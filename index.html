@@ -322,36 +322,6 @@
   .empty-icon { font-size: 48px; margin-bottom: 12px; }
   .empty-text { font-size: 15px; font-weight: 500; }
 
-  .start-route-btn {
-    display: block;
-    width: 100%;
-    padding: 13px 16px;
-    margin-bottom: 14px;
-    border: none;
-    border-radius: var(--radius-sm);
-    background: var(--green);
-    color: white;
-    font-size: 15px;
-    font-weight: 700;
-    cursor: pointer;
-    font-family: 'DM Sans', sans-serif;
-    box-shadow: var(--shadow);
-  }
-  .start-route-btn:active { background: var(--green-light); transform: scale(0.99); }
-  .next-stop-btn {
-    width: 100%;
-    padding: 11px 12px;
-    border: none;
-    border-radius: var(--radius-sm);
-    background: var(--green);
-    color: white;
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
-    font-family: 'DM Sans', sans-serif;
-  }
-  .next-stop-btn:active { background: var(--green-light); transform: scale(0.99); }
-
   .reset-btn {
     display: block; width: 100%; padding: 12px;
     margin-top: 16px;
@@ -611,10 +581,7 @@ function renderStops() {
   const doneCount = getDoneCount(currentWeekIdx, currentDay);
   const total = stops.length;
 
-  const nextIdx = getNextIncompleteIndex();
-  const routeButtonText = nextIdx === -1 ? '✓ Route Complete' : (doneCount > 0 ? `▶ Continue Route — Stop ${nextIdx + 1} of ${total}` : '▶ Start Route');
-  let html = `<button class="start-route-btn" onclick="startRoute()" ${nextIdx === -1 ? 'disabled style="opacity:.6;cursor:default;"' : ''}>${routeButtonText}</button>
-  <div class="stop-counter">
+  let html = `<div class="stop-counter">
     <span class="stop-count-label">${total} stop${total !== 1 ? 's' : ''} today</span>
     <span class="progress-text">${doneCount}/${total} done</span>
   </div>`;
@@ -647,7 +614,6 @@ function renderStops() {
         <a class="action-btn" href="${mapsUrl}" target="_blank"><span>📍</span> Navigate</a>
         ${phoneDigits.length >= 7 ? `<a class="action-btn" href="tel:${phoneDigits}"><span>📞</span> ${s.phone}</a>` : ''}
       </div>
-      ${!isDone ? `<div style="padding:0 14px 14px;"><button class="next-stop-btn" onclick="completeAndGoNext(${i})">✓ Complete & Go to Next Stop</button></div>` : ''}
     </div>`;
   });
 
@@ -673,44 +639,6 @@ function resetDay() {
   saveDone();
   renderTabs();
   renderStops();
-}
-
-function getNextIncompleteIndex(afterIdx = -1) {
-  const stops = currentDay ? getStops(currentWeekIdx, currentDay) : [];
-  for (let i = afterIdx + 1; i < stops.length; i++) {
-    if (!done[getKey(getWeekName(), currentDay, i)]) return i;
-  }
-  // If earlier stops were skipped, continue with the first remaining incomplete stop.
-  for (let i = 0; i <= afterIdx && i < stops.length; i++) {
-    if (!done[getKey(getWeekName(), currentDay, i)]) return i;
-  }
-  return -1;
-}
-
-function navigateToStop(idx) {
-  const stops = currentDay ? getStops(currentWeekIdx, currentDay) : [];
-  const stop = stops[idx];
-  if (!stop || !stop.address) return;
-  const destination = stop.address + ', Wichita, KS';
-  window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=driving`, '_blank');
-}
-
-function startRoute() {
-  const nextIdx = getNextIncompleteIndex();
-  if (nextIdx === -1) return;
-  navigateToStop(nextIdx);
-}
-
-function completeAndGoNext(idx) {
-  const key = getKey(getWeekName(), currentDay, idx);
-  done[key] = true;
-  saveDone();
-  const nextIdx = getNextIncompleteIndex(idx);
-  renderTabs();
-  renderStops();
-  if (nextIdx !== -1) {
-    navigateToStop(nextIdx);
-  }
 }
 
 function selectDay(day) {
