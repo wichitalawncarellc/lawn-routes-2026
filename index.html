@@ -389,7 +389,6 @@ let currentWeekIdx = 0;
 let currentDay = null;
 let done = {};
 let lastFetched = null;
-let pendingDone = {};
 
 // ── Storage ──────────────────────────────────────────
 function loadDone() {
@@ -407,7 +406,6 @@ function saveCurrentDay() {
   } catch(e) {}
 }
 function getKey(w, d, i) { return `${w}||${d}||${i}`; }
-function getAddressKey(address) { return `${currentSource}||${String(address || '').trim().toLowerCase()}`; }
 
 // ── CSV Parser ────────────────────────────────────────
 function parseCSV(text) {
@@ -536,10 +534,7 @@ function getStops(wIdx, day) {
 }
 
 function getDoneCount(wIdx, day) {
-  return getStops(wIdx, day).filter(s => {
-    const k = getAddressKey(s.address);
-    return Object.prototype.hasOwnProperty.call(pendingDone, k) ? pendingDone[k] : s.complete;
-  }).length;
+  return getStops(wIdx, day).filter(s => s.complete).length;
 }
 
 // ── Render ────────────────────────────────────────────
@@ -594,8 +589,7 @@ function renderStops() {
 
   stops.forEach((s, i) => {
     const key = getKey(weekName, currentDay, i);
-    const pendingKey = getAddressKey(s.address);
-    const isDone = Object.prototype.hasOwnProperty.call(pendingDone, pendingKey) ? pendingDone[pendingKey] : !!s.complete;
+    const isDone = !!s.complete;
     const hasNotes = !!s.notes;
     const mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(s.address + ', Wichita, KS')}`;
     const phoneDigits = s.phone ? s.phone.replace(/[^0-9]/g, '') : '';
@@ -654,35 +648,28 @@ function toggleDone(idx) {
   const stop = stops[idx];
   if (!stop) return;
 
-  const pendingKey = getAddressKey(stop.address);
-  const currentValue = Object.prototype.hasOwnProperty.call(pendingDone, pendingKey) ? pendingDone[pendingKey] : !!stop.complete;
-  const newValue = !currentValue;
-  pendingDone[pendingKey] = newValue;
+  const newValue = !stop.complete;
   stop.complete = newValue;
   renderTabs();
   renderStops();
   saveCompletion(stop.address, newValue);
 
-  // Keep the local choice while Google's published CSV catches up.
-  setTimeout(() => { delete pendingDone[pendingKey]; fetchData(true); }, 15000);
+  // Re-read the live Sheet after the write has had time to finish.
+  setTimeout(() => fetchData(true), 2500);
 }
 
 function resetDay() {
   const stops = getStops(currentWeekIdx, currentDay);
-  const toReset = stops.filter(s => {
-    const k = getAddressKey(s.address);
-    return Object.prototype.hasOwnProperty.call(pendingDone, k) ? pendingDone[k] : s.complete;
-  });
+  const toReset = stops.filter(s => s.complete);
+
   toReset.forEach(s => {
-    const k = getAddressKey(s.address);
-    pendingDone[k] = false;
     s.complete = false;
     saveCompletion(s.address, false);
-    setTimeout(() => { delete pendingDone[k]; }, 15000);
   });
+
   renderTabs();
   renderStops();
-  setTimeout(() => fetchData(true), 16000);
+  setTimeout(() => fetchData(true), 3000);
 }
 
 function selectDay(day) {
