@@ -443,7 +443,8 @@ function buildWeeks(rows) {
       address: r.Address || '',
       notes: r.Notes || '',
       customer: r.Customer || '',
-      phone: r.Phone || ''
+      phone: r.Phone || '',
+      complete: String(r.Complete || '').toUpperCase() === 'TRUE'
       // Price intentionally excluded from app
     });
   });
@@ -533,7 +534,7 @@ function getStops(wIdx, day) {
 }
 
 function getDoneCount(wIdx, day) {
-  return getStops(wIdx, day).filter((_, i) => done[getKey(weekOrder[wIdx], day, i)]).length;
+  return getStops(wIdx, day).filter(s => s.complete).length;
 }
 
 // ── Render ────────────────────────────────────────────
@@ -588,7 +589,7 @@ function renderStops() {
 
   stops.forEach((s, i) => {
     const key = getKey(weekName, currentDay, i);
-    const isDone = !!done[key];
+    const isDone = !!s.complete;
     const hasNotes = !!s.notes;
     const mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(s.address + ', Wichita, KS')}`;
     const phoneDigits = s.phone ? s.phone.replace(/[^0-9]/g, '') : '';
@@ -625,20 +626,47 @@ function renderStops() {
 }
 
 // ── Actions ───────────────────────────────────────────
+async function saveCompletion(address, complete) {
+  try {
+    await fetch(SHEET_CSV_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        sheet: currentSource,
+        address: address,
+        complete: complete
+      })
+    });
+  } catch (err) {
+    console.error('Could not sync completion:', err);
+  }
+}
+
 function toggleDone(idx) {
-  const key = getKey(getWeekName(), currentDay, idx);
-  done[key] = !done[key];
-  saveDone();
+  const stops = getStops(currentWeekIdx, currentDay);
+  const stop = stops[idx];
+  if (!stop) return;
+
+  stop.complete = !stop.complete;
   renderTabs();
   renderStops();
+  saveCompletion(stop.address, stop.complete);
+
+  // Pull shared status back from the Sheet shortly after the write.
+  setTimeout(() => fetchData(true), 1500);
 }
 
 function resetDay() {
   const stops = getStops(currentWeekIdx, currentDay);
-  stops.forEach((_, i) => { delete done[getKey(getWeekName(), currentDay, i)]; });
-  saveDone();
+  const toReset = stops.filter(s => s.complete);
+  toReset.forEach(s => {
+    s.complete = false;
+    saveCompletion(s.address, false);
+  });
   renderTabs();
   renderStops();
+  setTimeout(() => fetchData(true), 1800);
 }
 
 function selectDay(day) {
@@ -718,7 +746,7 @@ loadDone();
 fetchData();
 
 // Auto-refresh every hour
-setInterval(() => fetchData(true), 60 * 60 * 1000);
+setInterval(() => fetchData(true), 60 * 1000);
 </script>
 </body>
 </html>
